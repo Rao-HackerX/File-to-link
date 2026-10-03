@@ -4,6 +4,7 @@ import math
 import logging
 import secrets
 import mimetypes
+import traceback
 from aiohttp import web
 from aiohttp.http_exceptions import BadStatusLine
 from Adarsh.bot import multi_clients, work_loads, StreamBot
@@ -47,7 +48,7 @@ async def watch_route_handler(request: web.Request):
         else:
             m = re.search(r"(\d+)", path)
             if not m:
-                return web.Response(status=404, text="404 Not Found")
+                return web.Response(status=404, text="404: Invalid URL format")
             id = int(m.group(1))
             secure_hash = request.rel_url.query.get("hash")
 
@@ -59,8 +60,9 @@ async def watch_route_handler(request: web.Request):
     except FIleNotFound as e:
         return web.Response(status=404, text=getattr(e, 'message', 'File not found'))
     except Exception as e:
-        logging.exception(f"Error in watch route handler: {e}")
-        return web.Response(status=500, text=f"Internal Error: {str(e)}")
+        err_msg = traceback.format_exc()
+        logging.error(f"Error in watch_route_handler: {err_msg}")
+        return web.Response(status=500, text=f"Server Error:\n{err_msg}")
 
 
 @routes.get(r"/{path:\S+}", allow_head=True)
@@ -68,7 +70,6 @@ async def media_route_handler(request: web.Request):
     try:
         path = request.match_info.get("path", "")
         
-        # Explicitly handle non-media browser requests like favicon.ico
         if path in ["favicon.ico", "robots.txt"]:
             return web.Response(status=404, text="Not Found")
 
@@ -79,7 +80,7 @@ async def media_route_handler(request: web.Request):
         else:
             m = re.search(r"(\d+)", path)
             if not m:
-                return web.Response(status=404, text="404 Not Found")
+                return web.Response(status=404, text="404: Invalid URL format")
             id = int(m.group(1))
             secure_hash = request.rel_url.query.get("hash")
 
@@ -90,8 +91,9 @@ async def media_route_handler(request: web.Request):
     except FIleNotFound as e:
         return web.Response(status=404, text=getattr(e, 'message', 'File not found'))
     except Exception as e:
-        logging.exception(f"Error in media route handler: {e}")
-        return web.Response(status=500, text=f"Streaming Error: {str(e)}")
+        err_msg = traceback.format_exc()
+        logging.error(f"Error in media_route_handler: {err_msg}")
+        return web.Response(status=500, text=f"Streaming Error:\n{err_msg}")
 
 
 class_cache = {}
@@ -116,7 +118,7 @@ async def media_streamer(request: web.Request, id: int, secure_hash: str):
     file_size = file_id.file_size
 
     if range_header:
-        from_bytes, until_bytes = range_header.replace("bytes=", "").split("-")
+        from_bytes, until_bytes = str(range_header).replace("bytes=", "").split("-")
         from_bytes = int(from_bytes)
         until_bytes = int(until_bytes) if until_bytes else file_size - 1
     else:
