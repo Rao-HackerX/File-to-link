@@ -16,22 +16,24 @@ async def render_page(id, secure_hash):
         raise InvalidHash
     src = urllib.parse.urljoin(Var.URL, f'{secure_hash}{str(id)}')
     
-    if str(file_data.mime_type.split('/')[0].strip()) == 'video':
+    mime_type = file_data.mime_type if file_data.mime_type else 'video/mp4'
+    media_type = str(mime_type.split('/')[0].strip())
+    
+    if media_type == 'video':
         async with aiofiles.open('Adarsh/template/req.html') as r:
             heading = 'Watch {}'.format(file_data.file_name)
-            tag = file_data.mime_type.split('/')[0].strip()
+            tag = 'video'
             html = (await r.read()).replace('tag', tag) % (heading, file_data.file_name, src)
-    elif str(file_data.mime_type.split('/')[0].strip()) == 'audio':
+    elif media_type == 'audio':
         async with aiofiles.open('Adarsh/template/req.html') as r:
             heading = 'Listen {}'.format(file_data.file_name)
-            tag = file_data.mime_type.split('/')[0].strip()
+            tag = 'audio'
             html = (await r.read()).replace('tag', tag) % (heading, file_data.file_name, src)
     else:
         async with aiofiles.open('Adarsh/template/dl.html') as r:
             async with aiohttp.ClientSession() as s:
                 async with s.get(src) as u:
                     heading = 'Download {}'.format(file_data.file_name)
-                    file_size = humanbytes(int(u.headers.get('Content-Length')))
+                    file_size = humanbytes(int(u.headers.get('Content-Length', 0)))
                     html = (await r.read()) % (heading, file_data.file_name, src, file_size)
     return html
-
