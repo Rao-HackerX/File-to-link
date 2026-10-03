@@ -4,11 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>%s</title>
-    <!-- Plyr CSS -->
     <link rel="stylesheet" href="https://cdn.plyr.io/3.6.9/plyr.css" />
-    
     <style>
-        /* This removes all white space and makes the background pure black */
         html, body {
             margin: 0;
             padding: 0;
@@ -17,8 +14,6 @@
             background-color: #000;
             overflow: hidden;
         }
-        
-        /* Centers the player and makes it fill the screen completely */
         .container {
             width: 100%;
             height: 100%;
@@ -33,37 +28,31 @@
     </style>
 </head>
 <body>
-    <!-- Hidden file-name block. DO NOT REMOVE THIS. 
-         The Python bot expects exactly three '%s' variables to replace. 
-         If we delete this, the bot will crash! -->
-    <div style="display: none;">%s</div>
+    <!-- Hidden placeholder for Python compatibility -->
+    <span style="display:none">%s</span>
 
     <div class="container">
-        <!-- The Video Player -->
-        <video src="%s" class="player" playsinline controls></video>
+        <tag src="%s" class="player"></tag>
     </div>
 
-    <!-- Plyr JS -->
     <script src="https://cdn.plyr.io/3.6.9/plyr.js"></script>
     <script>
-        // The 'download' option has been completely removed from this list
         const controls = [
-              'play-large',
-              'rewind',
-              'play', 
-              'fast-forward', 
-              'progress', 
-              'current-time',
-              'duration',
-              'mute',
-              'volume',
-              'captions',
-              'settings',
-              'pip',
-              'airplay',
-              'fullscreen'
-            ];
-        
+            'play-large',
+            'rewind',
+            'play', 
+            'fast-forward', 
+            'progress', 
+            'current-time',
+            'duration',
+            'mute',
+            'volume',
+            'captions',
+            'settings',
+            'pip',
+            'airplay',
+            'fullscreen'
+        ];
         document.addEventListener('DOMContentLoaded', () => {
             const player = Plyr.setup('.player', { controls });
         });
