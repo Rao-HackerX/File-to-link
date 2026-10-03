@@ -39,48 +39,60 @@ async def root_route_handler(_):
 @routes.get(r"/watch/{path:\S+}", allow_head=True)
 async def watch_route_handler(request: web.Request):
     try:
-        path = request.match_info["path"]
+        path = request.match_info.get("path", "")
         match = re.search(r"^([a-zA-Z0-9_-]{6})(\d+)$", path)
         if match:
             secure_hash = match.group(1)
             id = int(match.group(2))
         else:
-            id = int(re.search(r"(\d+)(?:\/\S+)?", path).group(1))
+            m = re.search(r"(\d+)", path)
+            if not m:
+                return web.Response(status=404, text="404 Not Found")
+            id = int(m.group(1))
             secure_hash = request.rel_url.query.get("hash")
-        
+
         html_content = await render_page(id, secure_hash)
         return web.Response(text=html_content, content_type='text/html')
+
     except InvalidHash as e:
-        return web.Response(text=getattr(e, 'message', 'Invalid hash'), status=403)
+        return web.Response(status=403, text=getattr(e, 'message', 'Invalid hash'))
     except FIleNotFound as e:
-        return web.Response(text=getattr(e, 'message', 'File not found'), status=404)
-    except (BadStatusLine, ConnectionResetError, AttributeError):
-        return web.Response(status=400, text="Bad Request or Connection Closed")
+        return web.Response(status=404, text=getattr(e, 'message', 'File not found'))
     except Exception as e:
-        logging.exception("Error in watch route handler:")
-        return web.Response(status=500, text=str(e))
+        logging.exception(f"Error in watch route handler: {e}")
+        return web.Response(status=500, text=f"Internal Error: {str(e)}")
+
 
 @routes.get(r"/{path:\S+}", allow_head=True)
 async def media_route_handler(request: web.Request):
     try:
-        path = request.match_info["path"]
+        path = request.match_info.get("path", "")
+        
+        # Explicitly handle non-media browser requests like favicon.ico
+        if path in ["favicon.ico", "robots.txt"]:
+            return web.Response(status=404, text="Not Found")
+
         match = re.search(r"^([a-zA-Z0-9_-]{6})(\d+)$", path)
         if match:
             secure_hash = match.group(1)
             id = int(match.group(2))
         else:
-            id = int(re.search(r"(\d+)(?:\/\S+)?", path).group(1))
+            m = re.search(r"(\d+)", path)
+            if not m:
+                return web.Response(status=404, text="404 Not Found")
+            id = int(m.group(1))
             secure_hash = request.rel_url.query.get("hash")
+
         return await media_streamer(request, id, secure_hash)
+
     except InvalidHash as e:
-        return web.Response(text=getattr(e, 'message', 'Invalid hash'), status=403)
+        return web.Response(status=403, text=getattr(e, 'message', 'Invalid hash'))
     except FIleNotFound as e:
-        return web.Response(text=getattr(e, 'message', 'File not found'), status=404)
-    except (BadStatusLine, ConnectionResetError, AttributeError):
-        return web.Response(status=400, text="Bad Request or Connection Closed")
+        return web.Response(status=404, text=getattr(e, 'message', 'File not found'))
     except Exception as e:
-        logging.exception("Error in media streamer handler:")
-        return web.Response(status=500, text=str(e))
+        logging.exception(f"Error in media route handler: {e}")
+        return web.Response(status=500, text=f"Streaming Error: {str(e)}")
+
 
 class_cache = {}
 
@@ -89,21 +101,16 @@ async def media_streamer(request: web.Request, id: int, secure_hash: str):
     
     index = min(work_loads, key=work_loads.get)
     faster_client = multi_clients[index]
-    
-    if Var.MULTI_CLIENT:
-        logging.info(f"Client {index} is now serving {request.remote}")
 
     if faster_client in class_cache:
         tg_connect = class_cache[faster_client]
-        logging.debug(f"Using cached ByteStreamer object for client {index}")
     else:
-        logging.debug(f"Creating new ByteStreamer object for client {index}")
         tg_connect = ByteStreamer(faster_client)
         class_cache[faster_client] = tg_connect
-    
+
     file_id = await tg_connect.get_file_properties(id)
     
-    if file_id.unique_id[:6] != secure_hash:
+    if not file_id or file_id.unique_id[:6] != secure_hash:
         raise InvalidHash
     
     file_size = file_id.file_size
