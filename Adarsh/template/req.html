@@ -6,16 +6,16 @@
     <title>%s</title>
     <link rel="stylesheet" href="https://cdn.plyr.io/3.6.9/plyr.css" />
     <style>
-        html, body {
+        * {
             margin: 0;
             padding: 0;
+            box-sizing: border-box;
+        }
+        html, body {
             width: 100vw;
             height: 100vh;
-            background-color: #000;
+            background-color: #000000;
             overflow: hidden;
-        }
-        header, footer, marquee {
-            display: none !important;
         }
         .container {
             width: 100vw;
@@ -31,9 +31,7 @@
     </style>
 </head>
 <body>
-    <header style="display:none">
-        <div id="file-name">%s</div>
-    </header>
+    <div id="file-name" style="display: none;">%s</div>
 
     <div class="container">
         <tag src="%s" class="player"></tag>
@@ -44,9 +42,9 @@
         const controls = [
             'play-large',
             'rewind',
-            'play', 
-            'fast-forward', 
-            'progress', 
+            'play',
+            'fast-forward',
+            'progress',
             'current-time',
             'duration',
             'mute',
