@@ -51,14 +51,14 @@ async def watch_route_handler(request: web.Request):
         html_content = await render_page(id, secure_hash)
         return web.Response(text=html_content, content_type='text/html')
     except InvalidHash as e:
-        raise web.HTTPForbidden(text=getattr(e, 'message', 'Invalid hash'))
+        return web.Response(text=getattr(e, 'message', 'Invalid hash'), status=403)
     except FIleNotFound as e:
-        raise web.HTTPNotFound(text=getattr(e, 'message', 'File not found'))
-    except (BadStatusLine, ConnectionResetError):
-        return web.Response(status=400)
+        return web.Response(text=getattr(e, 'message', 'File not found'), status=404)
+    except (BadStatusLine, ConnectionResetError, AttributeError):
+        return web.Response(status=400, text="Bad Request or Connection Closed")
     except Exception as e:
         logging.exception("Error in watch route handler:")
-        raise web.HTTPInternalServerError(text=str(e))
+        return web.Response(status=500, text=str(e))
 
 @routes.get(r"/{path:\S+}", allow_head=True)
 async def media_route_handler(request: web.Request):
@@ -73,14 +73,14 @@ async def media_route_handler(request: web.Request):
             secure_hash = request.rel_url.query.get("hash")
         return await media_streamer(request, id, secure_hash)
     except InvalidHash as e:
-        raise web.HTTPForbidden(text=getattr(e, 'message', 'Invalid hash'))
+        return web.Response(text=getattr(e, 'message', 'Invalid hash'), status=403)
     except FIleNotFound as e:
-        raise web.HTTPNotFound(text=getattr(e, 'message', 'File not found'))
-    except (BadStatusLine, ConnectionResetError):
-        return web.Response(status=400)
+        return web.Response(text=getattr(e, 'message', 'File not found'), status=404)
+    except (BadStatusLine, ConnectionResetError, AttributeError):
+        return web.Response(status=400, text="Bad Request or Connection Closed")
     except Exception as e:
         logging.exception("Error in media streamer handler:")
-        raise web.HTTPInternalServerError(text=str(e))
+        return web.Response(status=500, text=str(e))
 
 class_cache = {}
 
@@ -100,12 +100,10 @@ async def media_streamer(request: web.Request, id: int, secure_hash: str):
         logging.debug(f"Creating new ByteStreamer object for client {index}")
         tg_connect = ByteStreamer(faster_client)
         class_cache[faster_client] = tg_connect
-    logging.debug("before calling get_file_properties")
+    
     file_id = await tg_connect.get_file_properties(id)
-    logging.debug("after calling get_file_properties")
     
     if file_id.unique_id[:6] != secure_hash:
-        logging.debug(f"Invalid hash for message with ID {id}")
         raise InvalidHash
     
     file_size = file_id.file_size
@@ -140,21 +138,6 @@ async def media_streamer(request: web.Request, id: int, secure_hash: str):
 
     mime_type = getattr(file_id, 'mime_type', None) or "video/mp4"
     file_name = getattr(file_id, 'file_name', 'video.mp4') or "video.mp4"
-    disposition = "attachment"
-
-    if mime_type:
-        if not file_name:
-            try:
-                file_name = f"{secrets.token_hex(2)}.{mime_type.split('/')[1]}"
-            except (IndexError, AttributeError):
-                file_name = f"{secrets.token_hex(2)}.unknown"
-    else:
-        if file_name:
-            guessed = mimetypes.guess_type(file_name)[0]
-            mime_type = guessed if guessed else "application/octet-stream"
-        else:
-            mime_type = "application/octet-stream"
-            file_name = f"{secrets.token_hex(2)}.unknown"
 
     return web.Response(
         status=206 if range_header else 200,
@@ -163,7 +146,7 @@ async def media_streamer(request: web.Request, id: int, secure_hash: str):
             "Content-Type": f"{mime_type}",
             "Content-Range": f"bytes {from_bytes}-{until_bytes}/{file_size}",
             "Content-Length": str(req_length),
-            "Content-Disposition": f'{disposition}; filename="{file_name}"',
+            "Content-Disposition": f'inline; filename="{file_name}"',
             "Accept-Ranges": "bytes",
         },
     )
