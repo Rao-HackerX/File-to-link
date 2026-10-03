@@ -1,60 +1,52 @@
-<!--(c) adarsh-goel-->
-<!--(c) Rishikesh-Sharma09-->
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta property="og:image" content="https://graph.org/file/5e6d18610741226005e6e.jpg" itemprop="thumbnailUrl">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="monetag" content="f3ecc71ccb639ccf66d9d0dee93d3e7a">
     <title>%s</title>
-    <link rel="stylesheet" type='text/css' href="https://drive----google.com/uc?export=view&id=1pVLG4gZy7jdow3sO-wFS06aP_A9QX0O6">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Raleway">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Delius">
+    <!-- Plyr CSS -->
     <link rel="stylesheet" href="https://cdn.plyr.io/3.6.9/plyr.css" />
-
-
-<style>
-      marquee{
-      font-size: 20px;
-      font-weight: 800;
-      color: Black;
-      font-family: serif;
-      }
-    </style>
+    
     <style>
-      marquee{
-      font-size: 30px;
-      font-weight: 800;
-      color: Black;
-      font-family: serif;
-      }
- 
+        /* This removes all white space and makes the background pure black */
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+            overflow: hidden;
+        }
+        
+        /* Centers the player and makes it fill the screen completely */
+        .container {
+            width: 100%;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .plyr {
+            width: 100%;
+            height: 100%;
+        }
     </style>
 </head>
-
 <body>
-
-    <header>
-        <marquee bgcolor="#808080"
-<div class="toogle"></div>
-        <div id="file-name">
-            %s
-        </div>
-</marquee>
-    </header>
+    <!-- Hidden file-name block. DO NOT REMOVE THIS. 
+         The Python bot expects exactly three '%s' variables to replace. 
+         If we delete this, the bot will crash! -->
+    <div style="display: none;">%s</div>
 
     <div class="container">
-        <tag src="%s" class="player"></tag>
+        <!-- The Video Player -->
+        <video src="%s" class="player" playsinline controls></video>
     </div>
 
-    <footer>
-	   <p> <center><h4>Video not playing? Possibly because your browser or the player doesn't support codec. Please download and watch :D</h4></center>
-    </p>	     
-    </footer>
+    <!-- Plyr JS -->
     <script src="https://cdn.plyr.io/3.6.9/plyr.js"></script>
-	<script>
+    <script>
+        // The 'download' option has been completely removed from this list
         const controls = [
               'play-large',
               'rewind',
@@ -69,16 +61,12 @@
               'settings',
               'pip',
               'airplay',
-              'download',
               'fullscreen'
             ];
+        
         document.addEventListener('DOMContentLoaded', () => {
             const player = Plyr.setup('.player', { controls });
         });
-
-        const body = document.querySelector('body');
-        const footer = document.querySelector('footer');
-        const toogle = document.querySelector('.toogle');
     </script>
 </body>
-	    </html>
+</html>
