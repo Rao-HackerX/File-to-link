@@ -1,6 +1,3 @@
-# Taken from megadlbot_oss <https://github.com/eyaadh/megadlbot_oss/blob/master/mega/webserver/routes.py>
-# Thanks to Eyaadh <https://github.com/eyaadh>
-
 import re
 import time
 import math
@@ -40,7 +37,7 @@ async def root_route_handler(_):
 
 
 @routes.get(r"/watch/{path:\S+}", allow_head=True)
-async def stream_handler(request: web.Request):
+async def watch_route_handler(request: web.Request):
     try:
         path = request.match_info["path"]
         match = re.search(r"^([a-zA-Z0-9_-]{6})(\d+)$", path)
@@ -50,19 +47,21 @@ async def stream_handler(request: web.Request):
         else:
             id = int(re.search(r"(\d+)(?:\/\S+)?", path).group(1))
             secure_hash = request.rel_url.query.get("hash")
-        return web.Response(text=await render_page(id, secure_hash), content_type='text/html')
+        
+        html_content = await render_page(id, secure_hash)
+        return web.Response(text=html_content, content_type='text/html')
     except InvalidHash as e:
-        raise web.HTTPForbidden(text=e.message)
+        raise web.HTTPForbidden(text=getattr(e, 'message', 'Invalid hash'))
     except FIleNotFound as e:
-        raise web.HTTPNotFound(text=e.message)
-    except (AttributeError, BadStatusLine, ConnectionResetError):
-        pass
+        raise web.HTTPNotFound(text=getattr(e, 'message', 'File not found'))
+    except (BadStatusLine, ConnectionResetError):
+        return web.Response(status=400)
     except Exception as e:
-        logging.critical(e.with_traceback(None))
+        logging.exception("Error in watch route handler:")
         raise web.HTTPInternalServerError(text=str(e))
 
 @routes.get(r"/{path:\S+}", allow_head=True)
-async def stream_handler(request: web.Request):
+async def media_route_handler(request: web.Request):
     try:
         path = request.match_info["path"]
         match = re.search(r"^([a-zA-Z0-9_-]{6})(\d+)$", path)
@@ -74,13 +73,13 @@ async def stream_handler(request: web.Request):
             secure_hash = request.rel_url.query.get("hash")
         return await media_streamer(request, id, secure_hash)
     except InvalidHash as e:
-        raise web.HTTPForbidden(text=e.message)
+        raise web.HTTPForbidden(text=getattr(e, 'message', 'Invalid hash'))
     except FIleNotFound as e:
-        raise web.HTTPNotFound(text=e.message)
-    except (AttributeError, BadStatusLine, ConnectionResetError):
-        pass
+        raise web.HTTPNotFound(text=getattr(e, 'message', 'File not found'))
+    except (BadStatusLine, ConnectionResetError):
+        return web.Response(status=400)
     except Exception as e:
-        logging.critical(e.with_traceback(None))
+        logging.exception("Error in media streamer handler:")
         raise web.HTTPInternalServerError(text=str(e))
 
 class_cache = {}
@@ -139,8 +138,8 @@ async def media_streamer(request: web.Request, id: int, secure_hash: str):
         file_id, index, offset, first_part_cut, last_part_cut, part_count, chunk_size
     )
 
-    mime_type = file_id.mime_type
-    file_name = file_id.file_name
+    mime_type = getattr(file_id, 'mime_type', None) or "video/mp4"
+    file_name = getattr(file_id, 'file_name', 'video.mp4') or "video.mp4"
     disposition = "attachment"
 
     if mime_type:
@@ -151,7 +150,8 @@ async def media_streamer(request: web.Request, id: int, secure_hash: str):
                 file_name = f"{secrets.token_hex(2)}.unknown"
     else:
         if file_name:
-            mime_type = mimetypes.guess_type(file_id.file_name)
+            guessed = mimetypes.guess_type(file_name)[0]
+            mime_type = guessed if guessed else "application/octet-stream"
         else:
             mime_type = "application/octet-stream"
             file_name = f"{secrets.token_hex(2)}.unknown"
